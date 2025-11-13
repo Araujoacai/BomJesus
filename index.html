@@ -295,6 +295,55 @@
                 </div>
 
 
+                <!-- Fechamento de Caixa -->
+                <h2 class="text-2xl font-semibold mb-4 mt-8">Fechamento de Caixa</h2>
+                <div class="bg-white p-5 rounded-lg shadow grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Col 1: Seletor de Data -->
+                    <div class="space-y-2">
+                        <label for="fechamento-date" class="block text-sm font-medium text-gray-700">Selecione o Dia</label>
+                        <input type="date" id="fechamento-date" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <button id="gerar-fechamento-btn" class="w-full mt-3 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center gap-2">
+                            <i data-lucide="calculator" class="w-5 h-5"></i>
+                            Gerar Relatório
+                        </button>
+                    </div>
+                    <!-- Col 2: Resultados -->
+                    <div class="md:col-span-2 bg-gray-50 p-4 rounded-lg space-y-2">
+                        <h3 class="text-lg font-semibold text-gray-800">Resumo do Dia <span id="resumo-data-display" class="text-gray-600 font-medium"></span></h3>
+                        
+                        <div id="fechamento-results" class="hidden space-y-2 pt-2">
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium text-gray-700">Vendas em Dinheiro:</span>
+                                <span id="fechamento-dinheiro" class="font-bold text-gray-900">R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium text-gray-700">Vendas em Cartão:</span>
+                                <span id="fechamento-cartao" class="font-bold text-gray-900">R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium text-gray-700">Vendas em PIX:</span>
+                                <span id="fechamento-pix" class="font-bold text-gray-900">R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <span class="font-medium text-gray-700">Vendas Fiado:</span>
+                                <span id="fechamento-fiado" class="font-bold text-gray-900">R$ 0,00</span>
+                            </div>
+                            <div class="flex justify-between text-xl text-green-700 py-3 mt-2">
+                                <span class="font-bold">TOTAL GERAL:</span>
+                                <span id="fechamento-total" class="font-extrabold">R$ 0,00</span>
+                            </div>
+                        </div>
+                        
+                        <div id="fechamento-loading" class="text-center text-gray-500 py-4 hidden">
+                            <p>Buscando vendas...</p>
+                        </div>
+                        <div id="fechamento-empty" class="text-center text-gray-500 py-4">
+                            <p>Selecione uma data e gere o relatório.</p>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Filtros do Histórico de Vendas -->
                 <div class="flex flex-wrap items-center justify-between gap-4 mt-8 mb-4">
                     <h2 class="text-2xl font-semibold">Histórico de Vendas</h2>
@@ -497,6 +546,19 @@
         const filterSalesBtn = document.getElementById('filter-sales-btn');
         const exportCsvBtn = document.getElementById('export-csv-btn');
         
+        // Seletores de Fechamento de Caixa
+        const fechamentoDate = document.getElementById('fechamento-date');
+        const gerarFechamentoBtn = document.getElementById('gerar-fechamento-btn');
+        const fechamentoResults = document.getElementById('fechamento-results');
+        const fechamentoLoading = document.getElementById('fechamento-loading');
+        const fechamentoEmpty = document.getElementById('fechamento-empty');
+        const resumoDataDisplay = document.getElementById('resumo-data-display');
+        const fechamentoDinheiro = document.getElementById('fechamento-dinheiro');
+        const fechamentoCartao = document.getElementById('fechamento-cartao');
+        const fechamentoPix = document.getElementById('fechamento-pix');
+        const fechamentoFiado = document.getElementById('fechamento-fiado');
+        const fechamentoTotal = document.getElementById('fechamento-total');
+        
         // Modal de Mensagem
         const messageModal = document.getElementById('message-modal');
         const messageText = document.getElementById('message-text');
@@ -558,6 +620,23 @@
                 cart = [];
                 renderStockTable();
                 renderCart();
+            }
+        });
+
+        // Handler de Login (RE-ADICIONADO)
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            loginError.classList.add('hidden');
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged cuidará do resto
+            } catch (error) {
+                console.error("Erro de login:", error.message);
+                loginError.textContent = "Email ou senha inválidos.";
+                loginError.classList.remove('hidden');
             }
         });
 
@@ -1429,9 +1508,103 @@
         // --- FIM DAS NOVAS FUNÇÕES ---
 
 
+        // --- NOVAS FUNÇÕES PARA FECHAMENTO DE CAIXA ---
+
+        // Define a data de hoje no input de fechamento
+        const setFechamentoDateToToday = () => {
+            if (!fechamentoDate) return;
+            const today = new Date().toISOString().split('T')[0];
+            fechamentoDate.value = today;
+        };
+
+        // Listener do botão Gerar Relatório de Fechamento
+        gerarFechamentoBtn.addEventListener('click', async () => {
+            const dateVal = fechamentoDate.value;
+            if (!dateVal) {
+                showMessage("Selecione uma data para o fechamento.", true);
+                return;
+            }
+
+            // Define o período de um dia inteiro
+            const startDate = new Date(dateVal + 'T00:00:00-03:00'); // Fuso -03:00 (Brasil)
+            const endDate = new Date(dateVal + 'T23:59:59-03:00');
+
+            fechamentoResults.classList.add('hidden');
+            fechamentoEmpty.classList.add('hidden');
+            fechamentoLoading.classList.remove('hidden');
+            gerarFechamentoBtn.disabled = true;
+
+            let salesForDay = [];
+            try {
+                const q = query(
+                    collection(db, dbPaths.sales),
+                    where('timestamp', '>=', Timestamp.fromDate(startDate)),
+                    where('timestamp', '<=', Timestamp.fromDate(endDate))
+                );
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    salesForDay.push(doc.data());
+                });
+
+                // Calcular totais
+                const totals = {
+                    dinheiro: 0,
+                    cartao: 0,
+                    pix: 0,
+                    fiado: 0,
+                    total: 0
+                };
+
+                salesForDay.forEach(sale => {
+                    // Soma o total da venda ao método de pagamento correspondente
+                    if (sale.paymentMethod === 'dinheiro') {
+                        totals.dinheiro += sale.total;
+                    } else if (sale.paymentMethod === 'cartao') {
+                        totals.cartao += sale.total;
+                    } else if (sale.paymentMethod === 'pix') {
+                        totals.pix += sale.total;
+                    } else if (sale.paymentMethod === 'fiado') {
+                        totals.fiado += sale.total;
+                    }
+                    // Soma ao total geral
+                    totals.total += sale.total;
+                });
+
+                // Exibir resultados
+                resumoDataDisplay.textContent = `(${startDate.toLocaleDateString('pt-BR')})`;
+                fechamentoDinheiro.textContent = formatCurrency(totals.dinheiro);
+                fechamentoCartao.textContent = formatCurrency(totals.cartao);
+                fechamentoPix.textContent = formatCurrency(totals.pix);
+                fechamentoFiado.textContent = formatCurrency(totals.fiado);
+                fechamentoTotal.textContent = formatCurrency(totals.total);
+
+                fechamentoLoading.classList.add('hidden');
+                
+                if (totals.total === 0) {
+                    fechamentoEmpty.textContent = "Nenhuma venda encontrada para este dia.";
+                    fechamentoEmpty.classList.remove('hidden');
+                } else {
+                    fechamentoResults.classList.remove('hidden'); // Mostra os resultados
+                }
+
+            } catch (error) {
+                console.error("Erro ao gerar fechamento:", error);
+                showMessage("Erro ao buscar vendas para o fechamento.", true);
+                fechamentoLoading.classList.add('hidden');
+                fechamentoEmpty.textContent = "Erro ao buscar dados.";
+                fechamentoEmpty.classList.remove('hidden');
+            }
+            gerarFechamentoBtn.disabled = false;
+        });
+
+
+        // --- FIM DAS NOVAS FUNÇÕES DE FECHAMENTO ---
+
+
         // --- Inicialização ---
 
         // Ativa os ícones do Lucide
+        setFechamentoDateToToday(); // Define a data de hoje no input
         lucide.createIcons();
 
         // CSS dinâmico para os links de navegação
