@@ -57,9 +57,7 @@
                     <button type="submit" id="login-btn" class="flex-1 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
                         Entrar
                     </button>
-                    <button type="button" id="register-btn" class="flex-1 w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-200 font-semibold">
-                        Registrar
-                    </button>
+                    <!-- O botão de registro foi removido daqui -->
                 </div>
             </form>
         </div>
@@ -449,7 +447,7 @@
         const loginEmail = document.getElementById('login-email');
         const loginPassword = document.getElementById('login-password');
         const loginBtn = document.getElementById('login-btn');
-        const registerBtn = document.getElementById('register-btn');
+        // const registerBtn = document.getElementById('register-btn'); // Removido
         const loginError = document.getElementById('login-error');
         const logoutBtn = document.getElementById('logout-btn');
         const logoutBtnMobile = document.getElementById('logout-btn-mobile');
@@ -563,52 +561,12 @@
             }
         });
 
-        // Handler de Login
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = loginEmail.value;
-            const password = loginPassword.value;
-            loginError.classList.add('hidden');
-            
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged cuidará do resto
-            } catch (error) {
-                console.error("Erro de login:", error.message);
-                loginError.textContent = "Email ou senha inválidos.";
-                loginError.classList.remove('hidden');
-            }
-        });
-
-        // Handler de Registro
+        // Handler de Registro (Removido)
+        /*
         registerBtn.addEventListener('click', async () => {
-            const email = loginEmail.value;
-            const password = loginPassword.value;
-            
-            if (!email || !password) {
-                loginError.textContent = "Preencha email e senha para registrar.";
-                loginError.classList.remove('hidden');
-                return;
-            }
-            
-            loginError.classList.add('hidden');
-            
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged cuidará do resto
-                showMessage("Conta registrada com sucesso! Você está logado.");
-            } catch (error) {
-                console.error("Erro de registro:", error.message);
-                if (error.code === 'auth/weak-password') {
-                    loginError.textContent = "Senha fraca. Use pelo menos 6 caracteres.";
-                } else if (error.code === 'auth/email-already-in-use') {
-                    loginError.textContent = "Este email já está em uso.";
-                } else {
-                    loginError.textContent = "Erro ao registrar.";
-                }
-                loginError.classList.remove('hidden');
-            }
+            ...
         });
+        */
 
         // Handler de Logout
         const handleLogout = async () => {
