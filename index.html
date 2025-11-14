@@ -984,7 +984,62 @@
             renderSalesItemSearch(e.target.value);
         });
 
-        // Adicionar ao carrinho
+        // NOVO: Listener para "Enter" (Leitor de Cód. Barras)
+        salesSearchInput.addEventListener('keydown', (e) => {
+            // Verifica se a tecla "Enter" foi pressionada e não é parte de uma composição IME
+            if (e.key === 'Enter' && !e.isComposing) {
+                e.preventDefault(); // Impede o comportamento padrão (como recarregar a página)
+                
+                const barcode = salesSearchInput.value.trim();
+                if (barcode === '') return; // Se não houver nada, ignora
+
+                // 1. Encontra o item pelo código de barras
+                const stockItem = stockItems.find(item => item.barcode === barcode);
+
+                if (stockItem) {
+                    // 2. Lógica de adicionar ao carrinho (baseada no listener de 'click')
+                    const id = stockItem.id;
+                    const cartItem = cart.find(i => i.id === id);
+
+                    if (cartItem) {
+                        // Aumenta a quantidade se houver estoque
+                        if (cartItem.quantity < stockItem.quantity) {
+                            cartItem.quantity++;
+                        } else {
+                            showMessage("Quantidade máxima em estoque atingida.", true);
+                        }
+                    } else {
+                        // Adiciona novo item ao carrinho (com lógica de promoção)
+                        const promo = promotions.find(p => p.itemId === stockItem.id);
+                        if (promo) {
+                            cart.push({ 
+                                ...stockItem, 
+                                quantity: 1, 
+                                originalPrice: stockItem.price,
+                                price: promo.promoPrice, 
+                                isPromo: true 
+                            });
+                        } else {
+                            cart.push({ ...stockItem, quantity: 1, isPromo: false, originalPrice: stockItem.price });
+                        }
+                    }
+                    
+                    renderCart();
+                    
+                    // 3. Limpa o input para o próximo scan
+                    salesSearchInput.value = '';
+                    renderSalesItemSearch(''); // Limpa os resultados
+
+                } else {
+                    // 4. Se não encontrar
+                    showMessage(`Item com código "${barcode}" não encontrado.`, true);
+                    salesSearchInput.value = '';
+                    renderSalesItemSearch('');
+                }
+            }
+        });
+
+        // Adicionar ao carrinho (por clique)
         salesSearchResults.addEventListener('click', (e) => {
             const itemDiv = e.target.closest('.sales-item-result');
             if (!itemDiv) return;
